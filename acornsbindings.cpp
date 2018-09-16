@@ -62,8 +62,6 @@ static SQInteger sqsetbg(HSQUIRRELVM v)
     bg_color = m5color(r, g, b);
 }
 
-
-
 static SQInteger sqfill(HSQUIRRELVM v)
 {
     SQInteger i = sq_gettop(v);
@@ -111,8 +109,11 @@ static SQInteger sqMenu(HSQUIRRELVM v)
         sq_pop(v, 2);
     }
     sq_pop(v, 1);
-
-    sq_pushinteger(v, myMenu.runOnce());
+    GIL_UNLOCK;
+    uint16_t sel = myMenu.runOnce();
+    GIL_LOCK;
+    sq_pushinteger(v, sel);
+    return (1);
 }
 
 static SQInteger sqtextsize(HSQUIRRELVM v)
@@ -156,6 +157,22 @@ static SQInteger sqdrawstring(HSQUIRRELVM v)
 }
 
 
+static SQInteger sqtextbox(HSQUIRRELVM v)
+{
+    SQInteger i = sq_gettop(v);
+    const char *s = 0;
+    const char *t = "";
+
+
+    if (sq_getstring(v, 3, &t) == SQ_ERROR)
+    {
+        sq_throwerror(v, "String is required");
+        return SQ_ERROR;
+    }
+    sq_getstring(v,2,&s);
+
+   ez.textBox(t, s);
+}
 
 //Returns a button event string of the form xy, where x is a b or c indicating button,
 //and y is p, r or l for press, release, or longpress.
@@ -165,11 +182,19 @@ static SQInteger sqButtonEvent(HSQUIRRELVM v)
 {
     SQInteger i = sq_gettop(v);
     SQInteger x = 0;
-    const char * ret = "";
+    const char *ret;
 
-    char al = 0;
-    char cl = 0;
-    char bl = 0;
+    static char ap = 0;
+    static char cp = 0;
+    static char bp = 0;
+
+    static char ar = 1;
+    static char cr = 1;
+    static char br = 1;
+
+    static char al = 0;
+    static char cl = 0;
+    static char bl = 0;
 
     if (sq_getinteger(v, 2, &x) == SQ_ERROR)
     {
@@ -179,49 +204,83 @@ static SQInteger sqButtonEvent(HSQUIRRELVM v)
     uint64_t start = millis();
 
     char first = 1;
+    ret = "";
     while (((millis() - start) < x) | first)
     {
         first = 0;
-        if (M5.BtnA.wasPressed())
+        if (M5.BtnA.pressedFor(15))
         {
-            ret = "ap";
-            break;
+            ar = 0;
+            if (ap == 0)
+            {
+                ret = "ap";
+                ap = 1;
+                break;
+            }
         }
-        if (M5.BtnB.wasPressed())
+        if (M5.BtnB.pressedFor(15))
         {
-            ret = "bp";
-            break;
+            cr = 0;
+
+            if (bp == 0)
+            {
+                bp = 1;
+                ret = "bp";
+                break;
+            }
         }
 
-        if (M5.BtnC.wasPressed())
+        if (M5.BtnC.pressedFor(15))
         {
-            ret = "cp";
-            break;
+            cr = 0;
+            if (cp == 0)
+            {
+                cp = 1;
+                ret = "cp";
+                break;
+            }
         }
 
-        if (M5.BtnA.wasReleased())
+        if (M5.BtnA.releasedFor(10))
         {
             al = 0;
-            ret = "ar";
-            break;
+            ap = 0;
+            if (ar == 0)
+            {
+                ar = 1;
+                ret = "ar";
+                break;
+            }
         }
-        if (M5.BtnB.wasReleased())
+        if (M5.BtnB.releasedFor(10))
         {
             bl = 0;
-            ret = "br";
-            break;
+            bp = 0;
+            if (br == 0)
+            {
+                br = 1;
+                ret = "br";
+                break;
+            }
         }
 
-        if (M5.BtnA.wasReleased())
+        if (M5.BtnC.releasedFor(10))
         {
             cl = 0;
-            ret = "cr";
-            break;
+            cp = 0;
+            if (cr == 0)
+            {
+                cr = 1;
+                ret = "cr";
+                break;
+            }
         }
+
+
 
         if (M5.BtnA.pressedFor(500))
         {
-            if (al = 0)
+            if (al == 0)
             {
                 al = 1;
                 ret = "al";
@@ -255,8 +314,15 @@ static SQInteger sqButtonEvent(HSQUIRRELVM v)
             GIL_LOCK;
         }
     }
-    sq_pushstring(v, ret, -1);
-    return(1);
+    if (strlen(ret) > 1)
+    {
+        sq_pushstring(v, ret, -1);
+    }
+    else
+    {
+        sq_pushnull(v);
+    }
+    return (1);
 }
 
 static SQInteger sqdrawimage(HSQUIRRELVM v)
@@ -294,5 +360,6 @@ void sqDoM5Bindings()
     Acorns.registerFunction(0, sqsetfg, "foregroundColor");
     Acorns.registerFunction(0, sqtextsize, "textSize");
     Acorns.registerFunction(0, sqdrawstring, "drawString");
+    Acorns.registerFunction(0, sqtextbox, "textBox");
     Acorns.registerFunction(0, sqMenu, "menu");
 }

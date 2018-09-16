@@ -32,17 +32,11 @@ static void errorfunc(loadedProgram * p, const char * s)
     ez.textBox(String("Errror in ")+ p->programID, s);
 }
 
-void acorns_UILoop(void *p)
+static void uiOneLoop()
 {
-    ezMenu *myMenu = new ezMenu("Select Folder");
-    struct ll *imgs = 0;
+    ezMenu * myMenu = 0;
 
-    ez.textBox("Welcome!", String(Acorns.getQuote())+ "\r\rPowered by Acorns and Squirrel\rMemory:" + String(ESP.getFreeHeap()));
-    while (1)
-    {
-
-    folder:
-        delete myMenu;
+ folder:
         myMenu = new ezMenu("Select Folder");
 
         myMenu->addItem("/spiffs/sqapps", doNothing);
@@ -54,6 +48,7 @@ void acorns_UILoop(void *p)
         if(d==0)
         {
             ez.msgBox("Error","Nonexistant directory.");
+            delete myMenu;
             goto folder;
         }
 
@@ -72,8 +67,9 @@ void acorns_UILoop(void *p)
             buffer[strlen(dir)+1] = 0;
             fnpart = buffer + strlen(dir) + 1;
         }
+        String title = myMenu->pickName();
         delete myMenu;
-        myMenu = new ezMenu(myMenu->pickName());
+        myMenu = new ezMenu(title);
 
         myMenu->addItem("..", doNothing);
 
@@ -105,17 +101,21 @@ void acorns_UILoop(void *p)
             myMenu->addItem(n);
             de = readdir(d);
         }
+
         myMenu->runOnce();
+        closedir(d);
         jpgs.clear();
         names.clear();
+   
         
       
         if (strcmp(myMenu->pickName().c_str(), "..")==0)
         {
+            delete myMenu;
             goto folder;
         }
         String s = String(buffer)+myMenu->pickName();
-        {
+        
             if(s.endsWith("/"))
             {
                 s+="a.nut";
@@ -124,8 +124,6 @@ void acorns_UILoop(void *p)
             {
                 s+="/a.nut";
             }
-        }
-        Serial.print(s);
         GIL_LOCK;
         const char * fn = s.c_str();
         FILE *f = fopen(fn, "r");
@@ -135,7 +133,7 @@ void acorns_UILoop(void *p)
             int sz = ftell(f);
             rewind(f);
 
-            char *buf = (char *)malloc(sz);
+            char *buf = (char *)malloc(sz+2);
             int p = 0;
 
             int chr = fgetc(f);
@@ -151,8 +149,9 @@ void acorns_UILoop(void *p)
             GIL_UNLOCK;
             ez.textBox(myMenu->pickName(),buf);
             M5.Lcd.fillScreen(TFT_WHITE);
-            printOut = "";
             Acorns.runProgram(buf, myMenu->pickName().c_str(), errorfunc, printfunc);
+            free(buf);
+            Acorns.closeProgram(myMenu->pickName().c_str());
             ez.textBox("Program Output", printOut);
             printOut = "";
             GIL_LOCK;
@@ -165,5 +164,14 @@ void acorns_UILoop(void *p)
             
         }
         GIL_UNLOCK;
+        delete myMenu;
+
+}
+void acorns_UILoop(void *p)
+{
+    ez.textBox("Welcome!", String(Acorns.getQuote())+ "\n\nPowered by Acorns and Squirrel\nMemory:" + String(ESP.getFreeHeap()));
+    while (1)
+    {
+        uiOneLoop();
     }
 }
