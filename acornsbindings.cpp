@@ -1,4 +1,5 @@
 #include "Arduino.h"
+#include "SPIFFS.h"
 #include "acorns.h"
 #include <M5Stack.h>
 #include <M5ez.h>
@@ -131,28 +132,35 @@ static SQInteger sqtextsize(HSQUIRRELVM v)
 static SQInteger sqdrawstring(HSQUIRRELVM v)
 {
     SQInteger i = sq_gettop(v);
-    SQInteger x = 0;
-    SQInteger y = 0;
+    SQInteger x = -1;
+    SQInteger y = -1;
     const char *t = 0;
 
-    if (sq_getinteger(v, 3, &x) == SQ_ERROR)
+    if(i>2)
     {
-        sq_throwerror(v, "Integer is required");
-        return SQ_ERROR;
+        if (sq_getinteger(v, 3, &x) == SQ_ERROR)
+        {
+            sq_throwerror(v, "Integer is required");
+            return SQ_ERROR;
+        }
+
+        if (sq_getinteger(v, 4, &y) == SQ_ERROR)
+        {
+            sq_throwerror(v, "Integer is required");
+            return SQ_ERROR;
+        }
     }
 
-    if (sq_getinteger(v, 4, &y) == SQ_ERROR)
-    {
-        sq_throwerror(v, "Integer is required");
-        return SQ_ERROR;
-    }
     if (sq_getstring(v, 2, &t) == SQ_ERROR)
     {
         sq_throwerror(v, "String is required");
         return SQ_ERROR;
     }
     M5.Lcd.setTextColor(fg_color, bg_color);
-    M5.Lcd.setCursor(x, y);
+    if(i>2)
+    {
+        M5.Lcd.setCursor(x, y);
+    }
     M5.Lcd.print(t);
 }
 
@@ -177,24 +185,46 @@ static SQInteger sqtextbox(HSQUIRRELVM v)
 //Returns a button event string of the form xy, where x is a b or c indicating button,
 //and y is p, r or l for press, release, or longpress.
 
+
+
+
+static char ap = 0;
+static char cp = 0;
+static char bp = 0;
+
+static char ar = 1;
+static char cr = 1;
+static char br = 1;
+
+static char al = 0;
+static char cl = 0;
+static char bl = 0;
+
+
+void m5sq_clearButtonsEvents()
+{
+
+    ap = 0;
+    cp = 0;
+    bp = 0;
+
+    ar = 1;
+    cr = 1;
+    br = 1;
+
+    al = 0;
+    cl = 0;
+    bl = 0;
+}
+
 //Waits up to the first arg in ms for an event, if present.
 static SQInteger sqButtonEvent(HSQUIRRELVM v)
 {
     SQInteger i = sq_gettop(v);
-    SQInteger x = 0;
+    SQInteger x = 1;
     const char *ret;
 
-    static char ap = 0;
-    static char cp = 0;
-    static char bp = 0;
-
-    static char ar = 1;
-    static char cr = 1;
-    static char br = 1;
-
-    static char al = 0;
-    static char cl = 0;
-    static char bl = 0;
+    
 
     if (sq_getinteger(v, 2, &x) == SQ_ERROR)
     {
@@ -205,9 +235,12 @@ static SQInteger sqButtonEvent(HSQUIRRELVM v)
 
     char first = 1;
     ret = "";
-    while (((millis() - start) < x) | first)
+    while ( ((millis() - start) < x) | first)
     {
         first = 0;
+        M5.BtnA.read();
+        M5.BtnB.read();
+        M5.BtnC.read();
         if (M5.BtnA.pressedFor(15))
         {
             ar = 0;
@@ -348,7 +381,16 @@ static SQInteger sqdrawimage(HSQUIRRELVM v)
         sq_throwerror(v, "String is required");
         return SQ_ERROR;
     }
-    M5.Lcd.drawJpgFile(SD, t, x, y);
+
+    if(String(t).startsWith("/sd/"))
+    {
+        M5.Lcd.drawJpgFile(SD, t+3, x, y);
+    }
+    else if(String(t).startsWith("/spiffs/"))
+    {
+        M5.Lcd.drawJpgFile(SPIFFS, t+7, x, y);
+    }
+
 }
 
 void sqDoM5Bindings()
