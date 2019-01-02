@@ -33,7 +33,7 @@ static SQInteger sqsetfg(HSQUIRRELVM v)
         sq_throwerror(v, "Integer is required");
         return SQ_ERROR;
     }
-    fg_color = m5color(r, g, b);
+    fg_color = m5color(r/8, g/4, b/8);
 }
 
 static SQInteger sqsetbg(HSQUIRRELVM v)

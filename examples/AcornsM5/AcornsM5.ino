@@ -25,7 +25,7 @@ void setup() {
   sqDoM5Bindings();
 
 
-  M5.begin();
+  ez.begin();
   M5.Lcd.fillScreen(TFT_GREY);
   M5.Lcd.setTextSize(2);
   M5.Lcd.setTextWrap(true);

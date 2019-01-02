@@ -19,6 +19,24 @@ void doNothing()
 {
 }
 
+static void refreshTheme()
+{
+        ez.theme->header_bgcolor = strtol(Acorns.getConfig("theme.header_bgcolor","0x7A60").c_str(),0,16);
+        ez.theme->header_fgcolor = strtol(Acorns.getConfig("theme.header_fgcolor","0x96CE").c_str(),0,16);
+        ez.theme->background =  strtol(Acorns.getConfig("theme.background","0xD634").c_str(),0,16);
+        ez.theme->foreground =  strtol(Acorns.getConfig("theme.foreground","0x38A1").c_str(),0,16);
+
+        ez.theme->button_bgcolor_b = strtol(Acorns.getConfig("theme.button_bgcolor_b","0x1B20").c_str(),0,16);
+        ez.theme->button_bgcolor_t = strtol(Acorns.getConfig("theme.button_bgcolor_t","0x4A27").c_str(),0,16);
+        ez.theme->menu_sel_bgcolor = strtol(Acorns.getConfig("theme.menu_sel_bgcolor","0x7A60").c_str(),0,16);
+        ez.theme->menu_sel_fgcolor = strtol(Acorns.getConfig("theme.menu_sel_fgcolor","0xAE90").c_str(),0,16);
+        ez.theme->menu_item_color = strtol(Acorns.getConfig("theme.menu_item_color","0x38A1").c_str(),0,16);
+
+
+}
+
+
+
 static String printOut = "";
 
 static void printfunc(loadedProgram *p, const char *s)
@@ -107,8 +125,6 @@ folder:
         {
             s += "/a.jpg";
         }
-        Serial.print(s);
-        Serial.print(n);
         jpgs.push_back(s);
         names.push_back(n);
         if (String(s).startsWith("/sd/") && exists(s.c_str()))
@@ -129,14 +145,15 @@ folder:
     }
 
     myMenu->txtFont(&FreeSerif18pt7b);
-    myMenu->imgBackground(m5color(255, 240, 230));
+    myMenu->imgBackground(strtol(Acorns.getConfig("theme.background","0xD634").c_str(),0,16));
     myMenu->imgFromTop(24);
     myMenu->imgCaptionFont(&FreeSerifBoldItalic18pt7b);
-    myMenu->imgCaptionLocation(MC_DATUM);
+
+    myMenu->imgCaptionLocation(BC_DATUM);
     myMenu->imgCaptionColor(m5color(0, 0, 0));
     myMenu->imgCaptionMargins(5);
 
-        myMenu->runOnce();
+    myMenu->runOnce();
     closedir(d);
     jpgs.clear();
     names.clear();
@@ -179,13 +196,17 @@ folder:
         fclose(f);
 
         GIL_UNLOCK;
-        ez.textBox(myMenu->pickName(), buf);
-        M5.Lcd.fillScreen(TFT_WHITE);
+        //Do we want to do anything to indicate an app is running?
+        // ez.textBox(myMenu->pickName(), buf);
+        // M5.Lcd.fillScreen(TFT_WHITE);
         m5sq_clearButtonsEvents();
         Acorns.runProgram(buf, myMenu->pickName().c_str(), errorfunc, printfunc);
         free(buf);
         Acorns.closeProgram(myMenu->pickName().c_str());
-        ez.textBox("Program Output", printOut);
+        if(printOut.length())
+        {
+            ez.textBox("Program Output", printOut);
+        }
         printOut = "";
         GIL_LOCK;
     }
@@ -199,12 +220,18 @@ folder:
     delete myMenu;
 }
 
+
 void acorns_UILoop(void *p)
 {
     ez.setFont(&FreeSerif18pt7b);
+    refreshTheme();
+
     ez.textBox("Welcome!", String(Acorns.getQuote()) + "\n\nPowered by Acorns and Squirrel\nMemory:" + String(ESP.getFreeHeap()));
     while (1)
     {
+        //Every time we run a program is a convenient time to refresh this, for dynamically trying
+        //Stuff
+        refreshTheme();
         uiOneLoop();
     }
 }

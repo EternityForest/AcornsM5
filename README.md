@@ -34,3 +34,21 @@ Shows a menu with the list of options(Must be list of strings), and returns the 
 
 ### fillScreen(r,g,b)
 ### textBox(title, text)
+
+## Theming
+
+You can change the theme with Acorns config options, whigh are 16 bit 565 RGB hex strings.
+You probably want to use a (color picker)[https://ee-programming-notepad.blogspot.com/2016/10/16-bit-color-generator-picker.html].
+
+### Options(with defaults)
+
+theme.header_bgcolor
+theme.header_fgcolor
+theme.background
+theme.foreground
+theme.button_bgcolor_b
+theme.button_bgcolor_t
+theme.menu_sel_bgcolor
+theme.menu_sel_fgcolor
+#### theme.menu_item_color
+Unselected menu item text
